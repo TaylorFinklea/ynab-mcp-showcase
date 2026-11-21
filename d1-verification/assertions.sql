@@ -1,0 +1,31 @@
+-- All fixtures are static, fictional, non-credential strings. Only probe_ tables.
+DELETE FROM probe_assertions;
+DELETE FROM probe_oauth_flows; DELETE FROM probe_connections; DELETE FROM probe_nonces; DELETE FROM probe_handoffs; DELETE FROM probe_browser_sessions; DELETE FROM probe_owner_epochs;
+INSERT INTO probe_owner_epochs VALUES('fictional-owner',0);
+INSERT OR IGNORE INTO probe_nonces(nonce,expires) SELECT 'fictional-nonce',2000 FROM probe_owner_epochs WHERE owner='fictional-owner' AND epoch=0;
+INSERT OR IGNORE INTO probe_nonces(nonce,expires) SELECT 'fictional-nonce',2000 FROM probe_owner_epochs WHERE owner='fictional-owner' AND epoch=0;
+INSERT INTO probe_assertions SELECT 'nonce-unique',COUNT(*)=1 FROM probe_nonces;
+UPDATE probe_owner_epochs SET epoch=epoch+1 WHERE owner='fictional-owner';
+INSERT OR IGNORE INTO probe_nonces(nonce,expires) SELECT 'old-epoch-request',2000 FROM probe_owner_epochs WHERE owner='fictional-owner' AND epoch=0;
+INSERT INTO probe_assertions SELECT 'stale-epoch-denied',COUNT(*)=0 FROM probe_nonces WHERE nonce='old-epoch-request';
+INSERT INTO probe_oauth_flows VALUES('fictional-owner','fictional-state','fictional-envelope',2000);
+INSERT OR IGNORE INTO probe_connections(owner,id,status) SELECT owner,'fictional-claim','authorizing' FROM probe_oauth_flows WHERE owner='fictional-owner' AND state_hash='fictional-state' AND payload='fictional-envelope' AND expires>1000;
+DELETE FROM probe_oauth_flows WHERE owner='fictional-owner' AND state_hash='fictional-state' AND payload='fictional-envelope';
+INSERT OR IGNORE INTO probe_connections(owner,id,status) SELECT owner,'replayed-claim','authorizing' FROM probe_oauth_flows WHERE owner='fictional-owner' AND state_hash='fictional-state' AND payload='fictional-envelope' AND expires>1000;
+INSERT INTO probe_assertions SELECT 'claim-consumed-once',COUNT(*)=1 AND MAX(id)='fictional-claim' FROM probe_connections;
+UPDATE probe_connections SET payload='fictional-encrypted-token',status='ready',plan_id='fictional-plan' WHERE owner='fictional-owner' AND id='fictional-claim' AND status='authorizing';
+UPDATE probe_connections SET status='refreshing',prior_status='ready',lease=5000 WHERE owner='fictional-owner' AND id='fictional-claim' AND status='ready' AND payload='fictional-encrypted-token' AND EXISTS(SELECT 1 FROM probe_owner_epochs WHERE owner='fictional-owner' AND epoch=1);
+INSERT INTO probe_assertions SELECT 'refresh-lock',status='refreshing' AND lease=5000 FROM probe_connections WHERE owner='fictional-owner';
+-- Disconnect/reconnect ABA
+DELETE FROM probe_connections WHERE owner='fictional-owner';
+INSERT INTO probe_connections(owner,id,status,payload,plan_id) VALUES('fictional-owner','new-connection','ready','new-fictional-envelope','new-plan');
+UPDATE probe_connections SET status='ready',payload='stale-result',lease=0 WHERE owner='fictional-owner' AND id='fictional-claim' AND status='refreshing' AND payload='fictional-encrypted-token' AND lease=5000;
+INSERT INTO probe_assertions SELECT 'refresh-aba-denied',payload='new-fictional-envelope' FROM probe_connections WHERE owner='fictional-owner';
+INSERT INTO probe_browser_sessions VALUES('fictional-session','fictional-owner','fictional-csrf-hash',2000);
+DELETE FROM probe_browser_sessions WHERE owner='fictional-owner';
+INSERT INTO probe_oauth_flows(owner,state_hash,payload,expires) SELECT owner,'new-state','new-envelope',3000 FROM probe_browser_sessions WHERE id_hash='fictional-session' AND owner='fictional-owner' AND csrf_hash='fictional-csrf-hash' AND expires>1000 ON CONFLICT(owner) DO UPDATE SET state_hash=excluded.state_hash,payload=excluded.payload,expires=excluded.expires;
+INSERT INTO probe_assertions SELECT 'session-flow-after-disconnect-denied',COUNT(*)=0 FROM probe_oauth_flows;
+UPDATE probe_connections SET plan_id='unauthorized-plan' WHERE owner='fictional-owner' AND EXISTS(SELECT 1 FROM probe_browser_sessions WHERE id_hash='fictional-session' AND owner='fictional-owner' AND csrf_hash='fictional-csrf-hash' AND expires>1000);
+INSERT INTO probe_assertions SELECT 'stale-session-pin-denied',plan_id='new-plan' FROM probe_connections WHERE owner='fictional-owner';
+INSERT INTO probe_handoffs(id_hash,owner,challenge_hash,expires,epoch) SELECT 'stale-handoff',owner,'fictional-challenge',2000,epoch FROM probe_owner_epochs WHERE owner='fictional-owner' AND epoch=0;
+INSERT INTO probe_assertions SELECT 'stale-epoch-mint-denied',COUNT(*)=0 FROM probe_handoffs;

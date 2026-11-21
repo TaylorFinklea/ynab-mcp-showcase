@@ -1,0 +1,28 @@
+{
+  "name": "ynab-private-bridge-mock",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-14",
+  "workers_dev": true,
+  "preview_urls": false,
+  "logpush": false,
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ynab-private-bridge-mock",
+      "database_id": "4bb94bfa-a8db-4284-a0a3-bb896a87c66e"
+    }
+  ]
+}
