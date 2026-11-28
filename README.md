@@ -1,5 +1,7 @@
 # ynab-mcp
 
+> **Retired and archived (2026-11-27).** I moved to YNAB's official MCP server. This repo stays up as a record of how it was built and run, and it is no longer maintained.
+
 A remote [MCP](https://modelcontextprotocol.io) server on Cloudflare Workers that lets Claude read my YNAB budget and, when I allow it, categorize and approve transactions while I watch. Only I can authorize it: Cloudflare Access proves who I am, an OAuth consent page sets what Claude may do, and the Worker's code limits the one write YNAB can receive.
 
 ## Architecture
@@ -100,6 +102,8 @@ flowchart LR
 
 ## Run it yourself
 
+This repo is unmaintained, so dependencies and the YNAB API may have moved on. For day-to-day use, YNAB's official MCP server is the better choice.
+
 The tests need only Node 26 and no accounts:
 
 ```bash
@@ -131,4 +135,4 @@ Follow [`mcp/SETUP.md`](mcp/SETUP.md). It walks through:
 
 ## License and status
 
-[MIT](LICENSE). Deployed and live-checked on 2026-11-19, and in personal use. It is single-owner by design: one owner email, one pinned budget. Split and transfer refusal is covered by tests but hasn't been tried live.
+[MIT](LICENSE). Retired on 2026-11-27: I moved to YNAB's official MCP server, and this repo is archived as a reference. It was deployed and live-checked on 2026-11-19, and I used it until I retired it. It is single-owner by design: one owner email, one pinned budget. Split and transfer refusal is covered by tests but hasn't been tried live.
